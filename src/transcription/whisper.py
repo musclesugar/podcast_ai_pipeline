@@ -22,7 +22,7 @@ class WhisperTranscriber:
 
         # Handle URL downloads
         if str(source).startswith("http"):
-            audio_path = self._download_audio_from_url(source, output_dir)
+            audio_path = self._download_audio_from_url(str(source), output_dir)
         else:
             audio_path = Path(source)
             if not audio_path.exists():

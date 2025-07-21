@@ -16,7 +16,9 @@ from tts.base import TTSEngine
 class PiperTTS(TTSEngine):
     """Piper TTS engine with automatic voice downloading."""
 
-    def __init__(self, data_dir: Path = None):
+    from typing import Optional
+
+    def __init__(self, data_dir: Optional[Path] = None):
         self.data_dir = data_dir or PIPER_DATA_DIR
         self.data_dir.mkdir(parents=True, exist_ok=True)
 

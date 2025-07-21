@@ -5,7 +5,7 @@ Audio processing and assembly for podcast generation.
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 from pydub import AudioSegment
 from tqdm import tqdm
@@ -28,7 +28,7 @@ class AudioProcessor:
         speaker_voices: Dict[str, str],
         speaker_engines: Dict[str, str],
         output_path: Path,
-        target_minutes: int = None,
+        target_minutes: Optional[int] = None,
         speed_scale: float = 1.0,
     ) -> None:
         """Process script and generate final audio file."""
@@ -74,18 +74,14 @@ class AudioProcessor:
             )
             piper_engine = self.tts_factory.create_engine("piper")
             for voice in piper_voices_to_download:
-                # Access the private method correctly
-                if hasattr(piper_engine, "_ensure_voice_available"):
-                    piper_engine._ensure_voice_available(voice)
-                else:
-                    # Fallback: just try to create the engine and let it handle downloading
-                    temp_path = PIPER_DATA_DIR / f"temp_{voice}.wav"
-                    try:
-                        piper_engine.synthesize("test", voice, temp_path)
-                        if temp_path.exists():
-                            temp_path.unlink()
-                    except:
-                        pass  # Voice will be downloaded during actual synthesis
+                # Use synthesize to trigger voice download if needed
+                temp_path = PIPER_DATA_DIR / f"temp_{voice}.wav"
+                try:
+                    piper_engine.synthesize("test", voice, temp_path)
+                    if temp_path.exists():
+                        temp_path.unlink()
+                except Exception:
+                    pass  # Voice will be downloaded during actual synthesis
 
     def _generate_audio_clips(
         self,
@@ -159,7 +155,7 @@ class AudioProcessor:
         return combined
 
     def _export_audio(
-        self, audio: AudioSegment, output_path: Path, target_minutes: int = None
+        self, audio: AudioSegment, output_path: Path, target_minutes: Optional[int] = None
     ) -> None:
         """Export the final audio file."""
         print(f"\n💾 Exporting final audio to {output_path}...")
@@ -172,9 +168,11 @@ class AudioProcessor:
             self._show_duration_feedback(duration_minutes, target_minutes)
 
     def _show_duration_feedback(
-        self, actual_minutes: float, target_minutes: int
+        self, actual_minutes: float, target_minutes: Optional[int]
     ) -> None:
         """Show feedback about the generated audio duration."""
+        if target_minutes is None:
+            return
         if (
             actual_minutes < target_minutes * 0.8
         ):  # If significantly shorter than target

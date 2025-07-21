@@ -54,7 +54,7 @@ def show_step_progress(step_name: str, current: int, total: int):
     print(f"🔄 {step_name} ({current}/{total})")
 
 
-def show_completion_message(task_name: str, duration_seconds: float = None):
+def show_completion_message(task_name: str, duration_seconds: Optional[float] = None):
     """Show a completion message with optional duration."""
     if duration_seconds:
         print(f"✅ {task_name} complete! ({duration_seconds:.1f}s)")

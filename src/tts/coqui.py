@@ -114,10 +114,12 @@ class CoquiTTS(TTSEngine):
             import torch
 
             # Add safe globals for XTTS compatibility
+            from TTS.tts.configs.xtts_config import XttsConfig
+            from TTS.utils.audio.processor import AudioProcessor
             torch.serialization.add_safe_globals(
                 [
-                    "TTS.tts.configs.xtts_config.XttsConfig",
-                    "TTS.utils.audio.processor.AudioProcessor",
+                    (XttsConfig, "TTS.tts.configs.xtts_config.XttsConfig"),
+                    (AudioProcessor, "TTS.utils.audio.processor.AudioProcessor"),
                 ]
             )
         except:

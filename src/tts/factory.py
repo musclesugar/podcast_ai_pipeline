@@ -97,6 +97,7 @@ class TTSFactory:
                     return False
         except:
             return False
+        return False
 
 
 # Legacy engine wrappers for backwards compatibility
