@@ -1,0 +1,17 @@
+# Extra TTS engines and optional features
+-r requirements.in
+
+# TTS engines (optional)
+edge-tts>=6.1.0          # Microsoft Edge TTS (recommended, free)
+
+# Audio/video processing (optional)
+yt-dlp>=2023.1.6         # For URL downloads in transcription
+ffmpeg-python>=0.2.0     # For audio format conversion
+
+# Audio processing dependencies
+scipy>=1.9.0             # For audio processing
+numpy>=1.21.0            # For audio manipulation
+
+# Note: Coqui TTS (TTS>=0.22.0) currently doesn't support Python 3.13
+# For Coqui TTS support, use Python 3.9-3.12
+# TTS>=0.22.0              # Coqui TTS with voice cloning (free, local)

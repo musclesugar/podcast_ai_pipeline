@@ -1,0 +1,197 @@
+# ============================================================================
+# Podcast AI Pipeline - .gitignore
+# ============================================================================
+
+# Generated Content (DO NOT COMMIT)
+# ============================================================================
+output/                          # All generated podcasts, transcripts, and metadata
+*.wav                           # Audio files
+*.mp3                           # Audio files
+*.ogg                           # Audio files
+*.flac                          # Audio files
+*.m4a                           # Audio files
+
+# API Keys and Secrets
+# ============================================================================
+.env                            # Environment variables (contains API keys)
+.env.local
+.env.*.local
+*.key
+secrets.json
+config.json
+
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+# ============================================================================
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+podcast_env/
+.conda/
+.pyenv/
+
+# IDE and Editor Files
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing and Coverage
+# ============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebooks
+# ============================================================================
+.ipynb_checkpoints
+*.ipynb
+
+# MyPy and Type Checking
+# ============================================================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Linting and Formatting
+# ============================================================================
+.flake8
+.pylintrc
+.black
+.isort.cfg
+
+# TTS Model Cache and Downloads
+# ============================================================================
+.cache/
+.local/share/piper/             # Piper TTS models (downloaded automatically)
+models/                         # Any manually downloaded models
+voice_models/
+tts_cache/
+*.onnx                          # Piper model files
+*.onnx.json                     # Piper config files
+
+# Coqui TTS Cache
+# ============================================================================
+.TTS/
+tts_models/
+vocoder_models/
+
+# Audio Processing Temp Files
+# ============================================================================
+temp_audio/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Logs and Debug Files
+# ============================================================================
+*.log
+logs/
+debug.log
+error.log
+transcription.log
+
+# Compiled Requirements (pip-tools)
+# ============================================================================
+# Keep .in files, ignore compiled .txt files that are auto-generated
+# requirements.txt              # Uncomment if you want to ignore compiled files
+# requirements-*.txt            # Uncomment if you want to ignore compiled files
+
+# OS Generated Files
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Archive Files
+# ============================================================================
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Backup Files
+# ============================================================================
+*.bak
+*.backup
+*~
+
+# Temporary Directories
+# ============================================================================
+episode_out/                    # Legacy output directory
+basic_example_output/           # Legacy example output
+dp_tutorial_*/                  # Legacy tutorial outputs
+
+# Large Files and Media (in case they end up in wrong places)
+# ============================================================================
+*.mkv
+*.avi
+*.mov
+*.mp4
+*.wmv
+
+# Documentation Build
+# ============================================================================
+docs/_build/
+site/
+
+# Package Manager Files
+# ============================================================================
+.npm/
+node_modules/
+yarn.lock
+package-lock.json
+
+# Misc
+# ============================================================================
+.env.example.local
+local_config.py
+scratch/
+playground/
+experiments/
+*.draft
+TODO.md
+NOTES.md
