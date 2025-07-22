@@ -1,163 +1,186 @@
 """
-GPT-powered script generation with intelligent batching for long content.
+GPT-powered script generation with intelligent approach selection.
 """
-from typing import List
-
 import openai
+from typing import List
 from tqdm import tqdm
 
-from config.settings import (DEFAULT_TEMPERATURE_NATURAL,
-                             DEFAULT_TEMPERATURE_PROFESSIONAL,
-                             MAX_WORDS_PER_BATCH, TTS_MULTIPLIER, WPM_NATURAL,
-                             WPM_PROFESSIONAL)
+from config.settings import (
+    WPM_NATURAL, WPM_PROFESSIONAL, TTS_MULTIPLIER, MAX_WORDS_PER_BATCH,
+    DEFAULT_TEMPERATURE_NATURAL, DEFAULT_TEMPERATURE_PROFESSIONAL
+)
 
 
 class ScriptGenerator:
-    """Handles AI-powered podcast script generation."""
-
+    """Handles AI-powered podcast script generation with intelligent approach selection."""
+    
     def __init__(self, model: str = "gpt-4o-mini"):
         self.model = model
-
-    def generate_script(
-        self,
-        prompt: str,
-        minutes: int,
-        speakers: List[str],
-        natural_style: bool = False,
-    ) -> str:
-        """Generate podcast script with intelligent batching for long content."""
+    
+    def generate_script(self, prompt: str, minutes: int, speakers: List[str], natural_style: bool = False, output_dir = None) -> str:
+        """Generate podcast script with intelligent approach selection."""
         target_words = self._estimate_words(minutes, natural_style)
-
+        
         print("🤖 Generating podcast script with GPT...")
         style_desc = "natural conversational" if natural_style else "professional"
-        print(
-            f"🎯 Target: {minutes} minutes = ~{target_words} words ({style_desc} style)"
-        )
-
-        # Determine if we need batching based on target length
+        print(f"🎯 Target: {minutes} minutes = ~{target_words} words ({style_desc} style)")
+        
+        # Use LLM to determine if content would benefit from structured approach
+        use_structured = self._should_use_structured_approach(prompt, minutes)
+        
+        if use_structured:
+            print("🧠 Using structured outline-first approach for complex content...")
+            from core.structured_script_generator import StructuredScriptGenerator
+            structured_generator = StructuredScriptGenerator(self.model)
+            script, outline = structured_generator.generate_structured_script(prompt, minutes, speakers, natural_style, output_dir)
+            return script
+        
+        # Use existing approach for simpler content
+        print("⚡ Using streamlined approach for straightforward content...")
         if target_words <= MAX_WORDS_PER_BATCH:
-            return self._generate_single_script(
-                prompt, minutes, speakers, natural_style, target_words
-            )
+            return self._generate_single_script(prompt, minutes, speakers, natural_style, target_words)
         else:
-            return self._generate_batched_script(
-                prompt, minutes, speakers, natural_style, target_words
-            )
+            return self._generate_batched_script(prompt, minutes, speakers, natural_style, target_words)
+    
+    def _should_use_structured_approach(self, prompt: str, minutes: int) -> bool:
+        """Use LLM to intelligently determine if content needs structured approach."""
+        
+        # Always use structured for very long content
+        if minutes >= 20:
+            return True
+        
+        # Use lightweight LLM call to analyze content complexity
+        analysis_prompt = f"""Analyze this podcast topic and determine if it would benefit from a structured, outline-first approach:
 
+Topic: "{prompt}"
+Duration: {minutes} minutes
+
+A structured approach is better for content that:
+- Has multiple logical sections or phases
+- Requires building understanding progressively 
+- Involves complex technical concepts
+- Is educational or instructional in nature
+- Has natural breakpoints or chapters
+- Involves interviews, tutorials, or deep dives
+
+A simple approach is better for:
+- Casual conversations or discussions
+- Simple Q&A format
+- Single-concept explanations
+- Short, focused topics
+- Natural flowing dialogue
+
+Respond with only "STRUCTURED" or "SIMPLE" and a brief 1-sentence reason."""
+
+        try:
+            resp = openai.chat.completions.create(
+                model="gpt-4o-mini",  # Use fastest model for this analysis
+                messages=[
+                    {"role": "system", "content": "You are a content strategist. Analyze if podcast content needs structured or simple generation approach."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                temperature=0.3,  # Low temperature for consistent analysis
+                max_tokens=50,    # Keep response short
+            )
+            
+            response = resp.choices[0].message.content.strip().upper()
+            
+            # Parse response
+            if "STRUCTURED" in response:
+                print(f"🧠 LLM Analysis: Using structured approach - {response.split('STRUCTURED')[1].strip()}")
+                return True
+            else:
+                print(f"⚡ LLM Analysis: Using simple approach - {response.split('SIMPLE')[1].strip() if 'SIMPLE' in response else 'straightforward content'}")
+                return False
+                
+        except Exception as e:
+            print(f"⚠️ Analysis failed ({e}), falling back to duration-based logic")
+            # Fallback: use structured for longer content
+            return minutes >= 15
+    
     def _estimate_words(self, minutes: int, natural_style: bool = False) -> int:
         """Estimate target words needed for desired duration, accounting for TTS speed."""
         base_wpm = WPM_NATURAL if natural_style else WPM_PROFESSIONAL
         # TTS systems speak faster than humans, so we need more words
         target_words = int(minutes * base_wpm * TTS_MULTIPLIER)
         return target_words
-
-    def _generate_single_script(
-        self,
-        prompt: str,
-        minutes: int,
-        speakers: List[str],
-        natural_style: bool,
-        target_words: int,
-    ) -> str:
+    
+    def _generate_single_script(self, prompt: str, minutes: int, speakers: List[str], 
+                               natural_style: bool, target_words: int) -> str:
         """Generate a single script without batching."""
         system_prompt = self._build_system_prompt(target_words, speakers, natural_style)
         user_prompt = self._build_user_prompt(prompt, target_words, minutes, speakers)
-
-        temperature = (
-            DEFAULT_TEMPERATURE_NATURAL
-            if natural_style
-            else DEFAULT_TEMPERATURE_PROFESSIONAL
-        )
-
+        
+        temperature = DEFAULT_TEMPERATURE_NATURAL if natural_style else DEFAULT_TEMPERATURE_PROFESSIONAL
+        
         with tqdm(total=1, desc=f"GPT Script") as pbar:
             resp = openai.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
+                    {"role": "system", "content": system_prompt}, 
+                    {"role": "user", "content": user_prompt}
                 ],
                 temperature=temperature,
             )
             pbar.update(1)
-
+        
         return resp.choices[0].message.content.strip()
-
-    def _generate_batched_script(
-        self,
-        prompt: str,
-        minutes: int,
-        speakers: List[str],
-        natural_style: bool,
-        target_words: int,
-    ) -> str:
+    
+    def _generate_batched_script(self, prompt: str, minutes: int, speakers: List[str], 
+                                natural_style: bool, target_words: int) -> str:
         """Generate script in batches for longer content and stitch them together."""
-        num_batches = max(
-            2, (target_words + MAX_WORDS_PER_BATCH - 1) // MAX_WORDS_PER_BATCH
-        )
+        num_batches = max(2, (target_words + MAX_WORDS_PER_BATCH - 1) // MAX_WORDS_PER_BATCH)
         words_per_batch = target_words // num_batches
-
+        
         print(f"📦 Using {num_batches} batches of ~{words_per_batch} words each")
-
+        
         # Define sections for the batches
         sections = [
             "introduction and problem setup",
-            "core concept explanation with examples",
+            "core concept explanation with examples", 
             "detailed algorithm walkthrough",
             "common mistakes and mindset shifts",
-            "advanced techniques and conclusion",
+            "advanced techniques and conclusion"
         ]
-
+        
         # Ensure we have enough sections
         while len(sections) < num_batches:
             sections.append(f"detailed discussion part {len(sections) - 3}")
-
+        
         all_scripts = []
-        temperature = (
-            DEFAULT_TEMPERATURE_NATURAL
-            if natural_style
-            else DEFAULT_TEMPERATURE_PROFESSIONAL
-        )
-
+        temperature = DEFAULT_TEMPERATURE_NATURAL if natural_style else DEFAULT_TEMPERATURE_PROFESSIONAL
+        
         with tqdm(total=num_batches, desc="GPT Batches") as pbar:
             for i in range(num_batches):
                 is_first = i == 0
                 is_last = i == num_batches - 1
                 section = sections[i] if i < len(sections) else f"section {i + 1}"
-
+                
                 batch_system = self._create_batch_system_prompt(
                     words_per_batch, speakers, natural_style, is_first, is_last, section
                 )
-
+                
                 batch_user = self._create_batch_user_prompt(
-                    prompt,
-                    words_per_batch,
-                    speakers,
-                    is_first,
-                    is_last,
-                    section,
-                    i + 1,
-                    num_batches,
+                    prompt, words_per_batch, speakers, is_first, is_last, section, i + 1, num_batches
                 )
-
+                
                 resp = openai.chat.completions.create(
                     model=self.model,
                     messages=[
-                        {"role": "system", "content": batch_system},
-                        {"role": "user", "content": batch_user},
+                        {"role": "system", "content": batch_system}, 
+                        {"role": "user", "content": batch_user}
                     ],
                     temperature=temperature,
                 )
-
+                
                 batch_script = resp.choices[0].message.content.strip()
                 all_scripts.append(batch_script)
                 pbar.update(1)
-
+        
         # Stitch scripts together
         return self._stitch_script_batches(all_scripts, speakers)
-
-    def _build_system_prompt(
-        self, target_words: int, speakers: List[str], natural_style: bool
-    ) -> str:
+    
+    def _build_system_prompt(self, target_words: int, speakers: List[str], natural_style: bool) -> str:
         """Build the system prompt for script generation."""
         base_system = (
             "You are a professional podcast script writer. Write engaging dialogue between the specified speakers."
@@ -177,7 +200,7 @@ class ScriptGenerator:
             " - Each speaker should have multiple longer paragraphs of dialogue to reach the word count"
             " - Include thorough explanations, examples, and detailed discussions"
         )
-
+        
         if natural_style:
             natural_additions = (
                 " NATURAL CONVERSATION STYLE (use sparingly - TTS voices handle this differently):"
@@ -192,14 +215,9 @@ class ScriptGenerator:
             )
             return base_system + natural_additions
         else:
-            return (
-                base_system
-                + " - Keep dialogue conversational but clear and professional"
-            )
-
-    def _build_user_prompt(
-        self, prompt: str, target_words: int, minutes: int, speakers: List[str]
-    ) -> str:
+            return base_system + " - Keep dialogue conversational but clear and professional"
+    
+    def _build_user_prompt(self, prompt: str, target_words: int, minutes: int, speakers: List[str]) -> str:
         """Build the user prompt for script generation."""
         return (
             f"Topic: {prompt}\n"
@@ -216,16 +234,9 @@ class ScriptGenerator:
             "The host should introduce the guest and the expert if included, and as a part of their introductions, who they are and why they're there. "
             "If the host has a specific question for a specific speaker, he should ask them directly. And he should frequently be asking clarifying questions as hosts typically do. "
         )
-
-    def _create_batch_system_prompt(
-        self,
-        words_per_batch: int,
-        speakers: List[str],
-        natural_style: bool,
-        is_first: bool,
-        is_last: bool,
-        section: str,
-    ) -> str:
+    
+    def _create_batch_system_prompt(self, words_per_batch: int, speakers: List[str], natural_style: bool, 
+                                   is_first: bool, is_last: bool, section: str) -> str:
         """Create system prompt for a batch."""
         base = (
             "You are a professional podcast script writer creating a segment of a longer podcast."
@@ -239,33 +250,24 @@ class ScriptGenerator:
             " - Keep all content as pure spoken dialogue only"
             " - Format example: 'HOST: Welcome to the show!' NOT 'HOST: text: Welcome to the show!' NOT 'HOST: ```text Welcome to the show!'"
         )
-
+        
         if is_first:
             base += " - This is the OPENING segment, so include introductions and topic setup"
         elif is_last:
             base += " - This is the CLOSING segment, so include summary and conclusions"
         else:
             base += " - This is a MIDDLE segment, so continue the conversation naturally from previous discussion"
-
+        
         if natural_style:
             base += (
                 " NATURAL STYLE: Include pauses with '...', "
                 "interruptions, self-corrections, and genuine reactions."
             )
-
+        
         return base
-
-    def _create_batch_user_prompt(
-        self,
-        prompt: str,
-        words_per_batch: int,
-        speakers: List[str],
-        is_first: bool,
-        is_last: bool,
-        section: str,
-        batch_num: int,
-        total_batches: int,
-    ) -> str:
+    
+    def _create_batch_user_prompt(self, prompt: str, words_per_batch: int, speakers: List[str], 
+                                 is_first: bool, is_last: bool, section: str, batch_num: int, total_batches: int) -> str:
         """Create user prompt for a batch."""
         return (
             f"Topic: {prompt}\n"
@@ -277,19 +279,19 @@ class ScriptGenerator:
             f"{'End with conclusions and wrap-up. ' if is_last else ''}"
             "Write substantial, detailed dialogue with thorough explanations and examples."
         )
-
+    
     def _stitch_script_batches(self, scripts: List[str], speakers: List[str]) -> str:
         """Intelligently stitch script batches together with smooth transitions."""
         if not scripts:
             return ""
-
+        
         if len(scripts) == 1:
             return scripts[0]
-
+        
         # Simple concatenation for now - could add transition logic later
         stitched = scripts[0]
         for script in scripts[1:]:
             # Add a small transition buffer
             stitched += "\n" + script
-
+        
         return stitched

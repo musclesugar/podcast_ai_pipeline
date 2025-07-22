@@ -108,3 +108,6 @@ example-basic:  ## Run basic example
 
 example-advanced:  ## Run advanced example (your DP tutorial)
 	python examples/advanced_generate.py
+
+example-system-design:  ## Run system design interview example (Netflix)
+	python examples/system_design_interview.py
